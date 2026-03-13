@@ -1,0 +1,13 @@
+/*
+ * This file has been created by the Vaadin Theme Editor. Please note that
+ * manual changes to individual CSS properties may be overwritten by the theme editor.
+ */
+html {
+  --aura-app-layout-inset:10px;
+  --aura-base-font-size:16;
+  --aura-base-radius:3;
+  --aura-base-size:20;
+  --aura-content-color-scheme:auto;
+  --aura-notification-color-scheme:auto;
+  color-scheme:auto;
+}
