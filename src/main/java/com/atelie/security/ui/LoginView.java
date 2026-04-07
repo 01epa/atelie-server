@@ -11,13 +11,13 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
 
-
-@AnonymousAllowed
 @PageTitle("Вход")
-@Route(value = "login",autoLayout = false)
+@Route(value = "login", autoLayout = false)
+@AnonymousAllowed
 public class LoginView extends Main implements BeforeEnterObserver {
 
     private final LoginForm login;
+
     public LoginView() {
 
 

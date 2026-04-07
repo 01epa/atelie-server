@@ -7,6 +7,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 
+import static com.atelie.order.ui.OrdersListView.ORDERS;
 import static com.vaadin.flow.spring.security.VaadinSecurityConfigurer.vaadin;
 
 @EnableWebSecurity
@@ -14,17 +15,17 @@ import static com.vaadin.flow.spring.security.VaadinSecurityConfigurer.vaadin;
 public class SecurityConfiguration {
 
     @Bean
-    public SecurityFilterChain vaadinSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain vaadinSecurityFilterChain(HttpSecurity http) {
         return http
-                // Allow all access to /images/
                 .authorizeHttpRequests(
                         authorize -> authorize
                                 .requestMatchers("/images/*.png",
                                         "/line-awesome/**",
                                         "/*.css",
-                                        "/aura/**").permitAll())
+                                        "/aura/**").permitAll()
+                                .requestMatchers("/" + ORDERS + "/*").permitAll()
+                )
                 .with(vaadin(), configurer -> configurer.loginView(LoginView.class))
                 .build();
     }
-
 }

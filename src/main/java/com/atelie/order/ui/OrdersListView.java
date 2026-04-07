@@ -12,17 +12,14 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
-import jakarta.annotation.security.RolesAllowed;
+import jakarta.annotation.security.PermitAll;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
-import static com.atelie.Role.ROLE_ADMIN;
-import static com.atelie.Role.ROLE_USER;
-
 @Route(value = OrdersListView.ORDERS, layout = MainLayout.class)
-@RolesAllowed({ROLE_ADMIN, ROLE_USER})
+@PermitAll
 public class OrdersListView extends AbstractView implements HasDynamicTitle {
 
     public static final String ORDERS = "orders";
@@ -85,7 +82,7 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                     doneBtn.getStyle().set("background-color", "#a8e6a3");
                     doneBtn.getStyle().set("color", "black");
 
-                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE);
+                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED);
 
                     doneBtn.addClickListener(e -> {
                         order.setStatus(OrderStatus.DONE);

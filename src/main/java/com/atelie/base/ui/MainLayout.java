@@ -15,16 +15,12 @@ import com.vaadin.flow.component.sidenav.SideNav;
 import com.vaadin.flow.component.sidenav.SideNavItem;
 import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.router.Layout;
+import com.vaadin.flow.server.auth.AnonymousAllowed;
 import com.vaadin.flow.theme.lumo.LumoUtility;
-import jakarta.annotation.security.PermitAll;
-import jakarta.annotation.security.RolesAllowed;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import static com.atelie.Role.ROLE_ADMIN;
-import static com.atelie.Role.ROLE_USER;
-
 @Layout
-@PermitAll
+@AnonymousAllowed
 public final class MainLayout extends AppLayout {
 
     MainLayout(@Autowired SecurityService securityService) {
