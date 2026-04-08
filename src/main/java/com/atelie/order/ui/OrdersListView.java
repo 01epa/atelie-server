@@ -1,5 +1,6 @@
 package com.atelie.order.ui;
 
+import com.atelie.Notifications;
 import com.atelie.base.ui.AbstractView;
 import com.atelie.base.ui.MainLayout;
 import com.atelie.order.OrderStatus;
@@ -10,13 +11,20 @@ import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+
+import static com.atelie.order.service.OrderService.DEFAULT_SORTING;
+import static org.springframework.data.domain.Sort.Direction.ASC;
+import static org.springframework.data.domain.Sort.Direction.DESC;
+import static org.springframework.data.domain.Sort.by;
 
 @Route(value = OrdersListView.ORDERS, layout = MainLayout.class)
 @PermitAll
@@ -55,23 +63,33 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
 
         grid.addColumn(Order::getOrderNumber)
                 .setHeader(t("orders.column.number"))
-                .setAutoWidth(true);
+                .setAutoWidth(true)
+                .setSortable(true)
+                .setKey("orderNumber");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm")
                 .withZone(ZoneId.systemDefault());
 
         grid.addColumn(o -> o.getDueDate() != null ? formatter.format(o.getDueDate()) : "-")
-                .setHeader(t("orders.column.dueDate"));
+                .setHeader(t("orders.column.dueDate"))
+                .setSortable(true)
+                .setKey("dueDate");
 
         grid.addColumn(Order::getPrice)
-                .setHeader(t("orders.column.price"));
+                .setHeader(t("orders.column.price"))
+                .setSortable(true)
+                .setKey("price");
 
         grid.addColumn(Order::getComment)
                 .setHeader(t("orders.column.comment"))
-                .setAutoWidth(true);
+                .setAutoWidth(true)
+                .setSortable(true)
+                .setKey("comment");
 
         grid.addColumn(o -> t(o.getStatus()))
-                .setHeader(t("orders.column.status"));
+                .setHeader(t("orders.column.status"))
+                .setSortable(true)
+                .setKey("status");
 
         grid.addComponentColumn(order -> {
                     Button doneBtn = new Button(t("orders.button.done"));
@@ -87,6 +105,7 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                     doneBtn.addClickListener(e -> {
                         order.setStatus(OrderStatus.DONE);
                         orderService.save(order);
+                        Notifications.success(t("order.ready", order.getOrderNumber()));
                         refresh();
                     });
 
@@ -96,19 +115,35 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 .setAutoWidth(true);
 
         grid.addItemDoubleClickListener(e ->
-                UI.getCurrent().navigate(ORDERS + "/" + e.getItem().getId())
+                UI.getCurrent().navigate(ORDERS + "/" + e.getItem().getOrderNumber())
         );
     }
 
     private void refresh() {
-        grid.setItems(query ->
-                orderService.list(
-                        PageRequest.of(
-                                query.getPage(),
-                                query.getPageSize()
-                        )
-                ).stream()
-        );
+        grid.setItems(query -> {
+            var sortOrders = query.getSortOrders();
+
+            var sort = sortOrders.isEmpty()
+                    ? DEFAULT_SORTING
+                    : by(
+                    sortOrders.stream()
+                            .map(order -> new Sort.Order(
+                                    order.getDirection() == SortDirection.ASCENDING
+                                            ? ASC
+                                            : DESC,
+                                    order.getSorted()
+                            ))
+                            .toList()
+            );
+
+            return orderService.list(
+                    PageRequest.of(
+                            query.getPage(),
+                            query.getPageSize(),
+                            sort
+                    )
+            ).stream();
+        });
     }
 
     @Override

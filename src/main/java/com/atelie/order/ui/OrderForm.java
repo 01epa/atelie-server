@@ -1,19 +1,21 @@
 package com.atelie.order.ui;
 
+import com.atelie.Notifications;
 import com.atelie.base.ui.AbstractView;
 import com.atelie.order.OrderStatus;
 import com.atelie.order.PaymentMethod;
 import com.atelie.order.PaymentStatus;
 import com.atelie.order.db.Order;
 import com.atelie.order.service.OrderService;
+import com.vaadin.flow.component.ModalityMode;
+import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.datetimepicker.DateTimePicker;
+import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.html.H3;
-import com.vaadin.flow.component.notification.Notification;
-import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
@@ -24,6 +26,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+
+import static com.atelie.order.ui.OrdersListView.ORDERS;
 
 public class OrderForm extends AbstractView {
     private final Binder<Order> binder = new Binder<>(Order.class);
@@ -184,32 +188,50 @@ public class OrderForm extends AbstractView {
                     paymentTitle,
                     paymentBlock);
             // ---------- кнопки ----------
-            Button saveBtn = new Button(t("button.save"), e -> {
-                if (binder.validate().isOk()) {
-                    binder.writeBeanIfValid(order);
-                    orderService.save(order);
-                    Notification.show(
-                                    t("order.saved"),
-                                    4000,
-                                    Notification.Position.BOTTOM_END)
-                            .addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-                    UI.getCurrent().navigate(OrdersListView.ORDERS);
+            Button saveBtn = new Button(t("button.save"), event -> {
+                if (!binder.validate().isOk()) {
+                    return;
                 }
+                binder.writeBeanIfValid(order);
+                int number = order.getOrderNumber();
+                orderService.findActiveByOrderNumber(order.getId(), number).ifPresentOrElse(existingOrder -> {
+                    Dialog dialog = new Dialog();
+                    dialog.add(new Text(t("order.duplicateOrder", number)));
+
+                    Button goToExisting = new Button(t("order.gotoOrder"), e -> {
+                        dialog.close();
+                        UI.getCurrent().navigate(ORDERS + "/" + existingOrder.getOrderNumber());
+                    });
+
+                    Button closeExisting = new Button(t("order.saveAndCloseOrder"), e -> {
+                        existingOrder.setStatus(OrderStatus.DONE);
+                        orderService.save(existingOrder);
+                        dialog.close();
+                        Notifications.success(t("order.ready", number));
+                        saveOrder(orderService, order);
+                    });
+
+                    Button cancel = new Button(t("button.cancel"), e -> dialog.close());
+
+                    HorizontalLayout actions = new HorizontalLayout(goToExisting, closeExisting, cancel);
+                    actions.setSpacing(true);
+                    actions.setPadding(true);
+                    dialog.add(actions);
+                    dialog.setModality(ModalityMode.STRICT);
+                    dialog.setCloseOnOutsideClick(true);
+                    dialog.open();
+                }, () -> saveOrder(orderService, order));
             });
 
             Button cancelBtn = new Button(t("button.cancel"),
-                    e -> UI.getCurrent().navigate(OrdersListView.ORDERS));
+                    e -> UI.getCurrent().navigate(ORDERS));
             cancelBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
 
             Button deleteBtn = new Button(t("button.delete"), e -> {
                 if (order.getId() != null) {
                     orderService.delete(order);
-                    Notification.show(
-                                    t("order.deleted"),
-                                    3000,
-                                    Notification.Position.BOTTOM_END)
-                            .addThemeVariants(NotificationVariant.LUMO_ERROR);
-                    UI.getCurrent().navigate(OrdersListView.ORDERS);
+                    Notifications.warning(t("order.deleted"));
+                    UI.getCurrent().navigate(ORDERS);
                 }
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
@@ -223,5 +245,11 @@ public class OrderForm extends AbstractView {
             formLayout.add(orderNumber, dueDate, price, status);
         }
         add(formLayout);
+    }
+
+    private void saveOrder(OrderService orderService, Order order) {
+        orderService.save(order);
+        Notifications.info(t("order.saved", order.getOrderNumber()));
+        UI.getCurrent().navigate(ORDERS);
     }
 }

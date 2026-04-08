@@ -1,13 +1,22 @@
 package com.atelie.order.db;
 
+import com.atelie.order.OrderStatus;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface OrderRepository extends JpaRepository<Order, Long>, JpaSpecificationExecutor<Order> {
+import java.util.Optional;
+import java.util.UUID;
 
-    // If you don't need a total row count, Slice is better than Page as it only performs a select query.
-    // Page performs both a select and a count query.
+public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecificationExecutor<Order> {
     Slice<Order> findAllBy(Pageable pageable);
+
+    Optional<Order> findTopByOrderNumberOrderByCreationDateDesc(int orderNumber);
+
+    Optional<Order> findTopByOrderNumberAndIdIsNotAndStatusNotOrderByCreationDateDesc(
+            int orderNumber,
+            UUID id,
+            OrderStatus status
+    );
 }

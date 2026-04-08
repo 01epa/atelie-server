@@ -15,6 +15,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 @Entity
 @Table(name = "orders")
@@ -22,9 +23,9 @@ public class Order {
     public static final int DESCRIPTION_MAX_LENGTH = 3000;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE)
-    @Column(name = "order_id")
-    private Long id;
+    @GeneratedValue
+    @Column(name = "id")
+    private UUID id;
 
     @Column(nullable = false, length = DESCRIPTION_MAX_LENGTH)
     private String comment = "";
@@ -69,8 +70,7 @@ public class Order {
     public Order() {
     }
 
-    // геттеры/сеттеры
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

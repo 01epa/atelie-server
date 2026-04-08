@@ -1,17 +1,24 @@
 package com.atelie.order.service;
 
+import com.atelie.order.OrderStatus;
 import com.atelie.order.db.Order;
 import com.atelie.order.db.OrderRepository;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class OrderService {
 
+    public static final Sort DEFAULT_SORTING = Sort.by(
+            Sort.Order.desc("creationDate"),
+            Sort.Order.desc("id")
+    );
     private final OrderRepository repo;
 
     public OrderService(OrderRepository repo) {
@@ -21,14 +28,23 @@ public class OrderService {
     @Transactional(readOnly = true)
     public List<Order> list(Pageable pageable) {
         if (pageable == null) {
-            return repo.findAll();
+            return repo.findAll(DEFAULT_SORTING);
         }
         return repo.findAllBy(pageable).toList();
     }
 
     @Transactional(readOnly = true)
-    public Optional<Order> findById(Long id) {
-        return repo.findById(id);
+    public Optional<Order> findByOrderNumber(int orderNumber) {
+        return repo.findTopByOrderNumberOrderByCreationDateDesc(orderNumber);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Order> findActiveByOrderNumber(UUID id, int orderNumber) {
+        return repo.findTopByOrderNumberAndIdIsNotAndStatusNotOrderByCreationDateDesc(
+                orderNumber,
+                id,
+                OrderStatus.DONE
+        );
     }
 
     @Transactional
