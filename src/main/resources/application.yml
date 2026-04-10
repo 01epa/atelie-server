@@ -1,0 +1,32 @@
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    org.atmosphere: warn
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/atelier
+    username: atelier
+    password: atelier
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    show-sql: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  main:
+    banner-mode: off
+
+vaadin:
+  allowed-packages: com.vaadin,org.vaadin,com.flowingcode,com.example
+  launch-browser: true
