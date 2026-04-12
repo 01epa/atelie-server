@@ -4,11 +4,14 @@ import com.atelie.db.order.Order;
 import com.atelie.db.order.OrderStatus;
 import com.atelie.db.order.PaymentMethod;
 import com.atelie.db.order.PaymentStatus;
+import com.atelie.db.user.Role;
 import com.atelie.db.user.User;
 import com.atelie.service.order.OrderService;
+import com.atelie.service.security.SecurityService;
 import com.atelie.service.user.UserService;
 import com.atelie.ui.AbstractView;
 import com.atelie.ui.Notifications;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;
@@ -36,8 +39,11 @@ public class OrderForm extends AbstractView {
 
     public OrderForm(OrderService orderService,
                      UserService userService,
-                     Order order,
-                     boolean editable) {
+                     SecurityService securityService,
+                     Order order) {
+        Role userRole = securityService.getUserRole();
+        boolean editable = userRole == Role.OWNER;
+
         setWidthFull();
         // ---------- поля ----------
         IntegerField orderNumber = new IntegerField(t("order.number"));
@@ -48,12 +54,12 @@ public class OrderForm extends AbstractView {
 
         List<User> users = userService.findAllUsers();
 
-        ComboBox<User> acceptedBy = new ComboBox<>(t("execution.acceptedBy"));
+        ComboBox<User> acceptedBy = new ComboBox<>(t("order.acceptedBy"));
         acceptedBy.setItems(users);
         acceptedBy.setWidthFull();
         acceptedBy.setItemLabelGenerator(User::getFullName);
 
-        ComboBox<User> assignedTo = new ComboBox<>(t("execution.assignedTo"));
+        ComboBox<User> assignedTo = new ComboBox<>(t("order.assignedTo"));
         assignedTo.setItems(users);
         assignedTo.setWidthFull();
         assignedTo.setItemLabelGenerator(User::getFullName);
@@ -74,21 +80,21 @@ public class OrderForm extends AbstractView {
         price.setMin(0);
         price.setWidthFull();
 
-        ComboBox<PaymentStatus> paymentStatus = new ComboBox<>(t("payment.status"));
+        ComboBox<PaymentStatus> paymentStatus = new ComboBox<>(t("order.payment.status"));
         paymentStatus.setItems(PaymentStatus.values());
         paymentStatus.setItemLabelGenerator(this::t);
         paymentStatus.setWidthFull();
 
-        IntegerField partiallyPaid = new IntegerField(t("payment.partiallyPaid"));
+        IntegerField partiallyPaid = new IntegerField(t("order.payment.partiallyPaid"));
         partiallyPaid.setMin(0);
         partiallyPaid.setWidthFull();
 
-        ComboBox<PaymentMethod> paymentMethod = new ComboBox<>(t("payment.method"));
+        ComboBox<PaymentMethod> paymentMethod = new ComboBox<>(t("order.payment.method"));
         paymentMethod.setItems(PaymentMethod.values());
         paymentMethod.setItemLabelGenerator(this::t);
         paymentMethod.setWidthFull();
 
-        ComboBox<OrderStatus> status = new ComboBox<>(t("execution.status"));
+        ComboBox<OrderStatus> status = new ComboBox<>(t("order.status"));
         status.setItems(OrderStatus.values());
         status.setItemLabelGenerator(this::t);
         status.setWidthFull();
@@ -158,8 +164,8 @@ public class OrderForm extends AbstractView {
         binder.readBean(order);
 
         // ---------- layout ----------
-        VerticalLayout orderLeft = new VerticalLayout(orderNumber, dueDate);
-        VerticalLayout orderRight = new VerticalLayout(comment, price);
+        VerticalLayout orderLeft = new VerticalLayout(orderNumber, price);
+        VerticalLayout orderRight = new VerticalLayout(dueDate, comment);
 
         HorizontalLayout orderBlock = new HorizontalLayout(orderLeft, orderRight);
         orderBlock.setWidthFull();
@@ -182,10 +188,10 @@ public class OrderForm extends AbstractView {
         VerticalLayout formLayout = new VerticalLayout();
         formLayout.setWidthFull();
 
-        if (editable) {
-            H3 orderTitle = new H3(t("order.title"));
-            H3 executionTitle = new H3(t("execution.title"));
-            H3 paymentTitle = new H3(t("payment.title"));
+        if (userRole != Role.ANONYMOUS) {
+            H3 orderTitle = new H3(t("order.order.title"));
+            H3 executionTitle = new H3(t("order.execution.title"));
+            H3 paymentTitle = new H3(t("order.payment.title"));
 
             formLayout.add(orderTitle,
                     orderBlock,
@@ -228,26 +234,46 @@ public class OrderForm extends AbstractView {
                     dialog.open();
                 }, () -> saveOrder(orderService, order));
             });
+            saveBtn.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
             Button cancelBtn = new Button(t("button.cancel"),
                     e -> UI.getCurrent().navigate(ORDERS));
             cancelBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
 
             Button deleteBtn = new Button(t("button.delete"), e -> {
-                if (order.getId() != null) {
+
+                Dialog dialog = new Dialog();
+
+                H3 label = new H3(t("order.deletion", order.getOrderNumber()));
+                Button save = new Button(t("button.save"), ev -> {
                     orderService.delete(order);
-                    Notifications.warning(t("order.deleted"));
+                    Notifications.warning(t("order.deleted", order.getOrderNumber()));
                     UI.getCurrent().navigate(ORDERS);
-                }
+                    dialog.close();
+                });
+                save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
+                Button cancel = new Button(t("button.cancel"), ev -> dialog.close());
+
+                VerticalLayout layout = new VerticalLayout(label);
+                HorizontalLayout buttonLayout = new HorizontalLayout(save, cancel);
+                buttonLayout.setWidthFull();
+                buttonLayout.setFlexGrow(1, save, cancel);
+                layout.add(buttonLayout);
+                dialog.add(layout);
+                dialog.open();
             });
             deleteBtn.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            HorizontalLayout buttons = new HorizontalLayout(saveBtn, cancelBtn);
-            if (order.getId() != null) {
+            HorizontalLayout buttons = new HorizontalLayout();
+            if (editable) {
+                buttons.add(saveBtn);
+            }
+            buttons.add(cancelBtn);
+            if (editable && order.getId() != null) {
                 buttons.add(deleteBtn);
             }
             formLayout.add(buttons);
         } else {
-            formLayout.add(new H3(t("order.title")));
+            formLayout.add(new H3(t("order.order.title")));
             formLayout.add(orderNumber, dueDate, price, status);
         }
         add(formLayout);

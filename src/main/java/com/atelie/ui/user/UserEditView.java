@@ -1,10 +1,11 @@
-package com.atelie.ui.order;
+package com.atelie.ui.user;
 
-import com.atelie.db.order.Order;
-import com.atelie.service.order.OrderService;
+import com.atelie.db.user.Role;
+import com.atelie.db.user.User;
 import com.atelie.service.security.SecurityService;
 import com.atelie.service.user.UserService;
 import com.atelie.ui.AbstractView;
+import com.atelie.ui.MainLayout;
 import com.atelie.ui.Notifications;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.html.H3;
@@ -13,27 +14,26 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.vaadin.flow.server.auth.AnonymousAllowed;
+import jakarta.annotation.security.RolesAllowed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.atelie.ui.order.OrdersListView.NEW_ORDER;
+import java.util.UUID;
 
-@Route(value = OrderView.ORDER + "/:orderId")
-@PageTitle("Заказ")
-@AnonymousAllowed
-public class OrderView extends AbstractView implements BeforeEnterObserver {
+import static com.atelie.ui.user.UsersListView.NEW_USER;
+import static com.atelie.ui.user.UsersListView.USERS;
 
-    private static final Logger log = LoggerFactory.getLogger(OrderView.class);
-    public static final String ORDER = "order";
-    protected final OrderService orderService;
+@Route(value = USERS + "/:userId", layout = MainLayout.class)
+@PageTitle("Пользователь")
+@RolesAllowed(Role.ROLE_ADMIN)
+public class UserEditView extends AbstractView implements BeforeEnterObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(UserEditView.class);
     private final UserService userService;
     protected final SecurityService securityService;
 
-    public OrderView(OrderService orderService,
-                     UserService userService,
-                     SecurityService securityService) {
-        this.orderService = orderService;
+    public UserEditView(UserService userService,
+                        SecurityService securityService) {
         this.userService = userService;
         this.securityService = securityService;
     }
@@ -41,26 +41,24 @@ public class OrderView extends AbstractView implements BeforeEnterObserver {
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         removeAll();
-        String orderId = event.getRouteParameters().get("orderId").orElse(null);
-        Order order;
+        String userId = event.getRouteParameters().get("userId").orElse(null);
+        User user;
 
-        if (orderId == null || NEW_ORDER.equals(orderId)) {
-            order = new Order();
+        if (userId == null || NEW_USER.equals(userId)) {
+            user = new User();
         } else {
             try {
-                order = orderService.findByOrderNumber(Integer.parseInt(orderId))
+                user = userService.findUser(UUID.fromString(userId))
                         .orElseThrow();
             } catch (Exception e) {
-                log.error("Can't open order form", e);
-                handleError(event, t("order.notFound", orderId));
+                log.error("Can't open user form", e);
+                handleError(event, t("user.notFound", userId));
                 return;
             }
         }
-        add(new OrderForm(
-                orderService,
+        add(new UserForm(
                 userService,
-                securityService,
-                order
+                user
         ));
     }
 
@@ -68,7 +66,7 @@ public class OrderView extends AbstractView implements BeforeEnterObserver {
         boolean loggedIn = securityService.getAuthenticatedUser() != null;
 
         if (loggedIn) {
-            event.forwardTo(OrdersListView.class);
+            event.forwardTo(UsersListView.class);
 
             UI.getCurrent().access(() -> Notifications.error(message));
         } else {

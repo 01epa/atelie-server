@@ -1,11 +1,13 @@
 package com.atelie.ui.order;
 
-import com.atelie.ui.Notifications;
+import com.atelie.db.order.Order;
+import com.atelie.db.order.OrderStatus;
+import com.atelie.db.user.Role;
+import com.atelie.service.order.OrderService;
+import com.atelie.service.security.SecurityService;
 import com.atelie.ui.AbstractView;
 import com.atelie.ui.MainLayout;
-import com.atelie.db.order.OrderStatus;
-import com.atelie.db.order.Order;
-import com.atelie.service.order.OrderService;
+import com.atelie.ui.Notifications;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
@@ -34,10 +36,13 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
     public static final String NEW_ORDER = "new";
 
     private final OrderService orderService;
+    private final SecurityService securityService;
     private final Grid<Order> grid = new Grid<>(Order.class, false);
 
-    public OrdersListView(OrderService orderService) {
+    public OrdersListView(OrderService orderService,
+                          SecurityService securityService) {
         this.orderService = orderService;
+        this.securityService = securityService;
 
         setSizeFull();
         setPadding(true);
@@ -45,6 +50,7 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
 
         Button add = new Button(t("orders.create"),
                 e -> UI.getCurrent().navigate(ORDERS + "/" + NEW_ORDER));
+        add.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         HorizontalLayout topBar = new HorizontalLayout(add);
         topBar.setWidthFull();
@@ -99,8 +105,8 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                     doneBtn.getStyle().set("padding", "0 5px");
                     doneBtn.getStyle().set("background-color", "#a8e6a3");
                     doneBtn.getStyle().set("color", "black");
-
-                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED);
+                    boolean isOwner = securityService.getUserRole() == Role.OWNER;
+                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED && isOwner);
 
                     doneBtn.addClickListener(e -> {
                         order.setStatus(OrderStatus.DONE);

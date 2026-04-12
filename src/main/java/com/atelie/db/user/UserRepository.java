@@ -12,8 +12,16 @@ import java.util.UUID;
 public interface UserRepository extends JpaRepository<User, UUID> {
     Slice<User> findAllBy(Pageable pageable);
 
+    Optional<User> findByUsernameAndStatus(String username, UserStatus status);
+
+    List<User> findAllByRoleNotAndStatus(Role role, UserStatus status);
+
     Optional<User> findByUsername(String username);
 
-    List<User> findAllByRoleNotAndActiveTrue(Role role);
+    Slice<User> findAllByStatusNot(UserStatus status, Pageable pageable);
 
+    Optional<User> findTopByUsernameAndIdNot(
+            String username,
+            UUID id
+    );
 }

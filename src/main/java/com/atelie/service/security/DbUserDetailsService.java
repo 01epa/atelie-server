@@ -1,6 +1,7 @@
 package com.atelie.service.security;
 
 import com.atelie.db.user.UserRepository;
+import com.atelie.db.user.UserStatus;
 import jakarta.annotation.Nonnull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,7 +21,7 @@ public class DbUserDetailsService implements UserDetailsService {
     @Override
     @Nonnull
     public UserDetails loadUserByUsername(@Nonnull String username) {
-        var user = repo.findByUsername(username)
+        var user = repo.findByUsernameAndStatus(username, UserStatus.ACTIVE)
                 .orElseThrow(() -> new UsernameNotFoundException(username));
 
         return withUsername(user.getUsername())
