@@ -11,7 +11,6 @@ import com.atelie.service.security.SecurityService;
 import com.atelie.service.user.UserService;
 import com.atelie.ui.AbstractView;
 import com.atelie.ui.Notifications;
-import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.Text;
 import com.vaadin.flow.component.UI;

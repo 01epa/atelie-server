@@ -1,13 +1,16 @@
 package com.atelie.service.order;
 
-import com.atelie.db.order.OrderStatus;
 import com.atelie.db.order.Order;
 import com.atelie.db.order.OrderRepository;
+import com.atelie.db.order.OrderStatus;
+import jakarta.persistence.criteria.Predicate;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,11 +29,32 @@ public class OrderService {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> list(Pageable pageable) {
-        if (pageable == null) {
-            return repo.findAll(DEFAULT_SORTING);
-        }
-        return repo.findAllBy(pageable).toList();
+    public Page<Order> list(Pageable pageable,
+                            String username,
+                            boolean onlyMine,
+                            boolean onlyActive,
+                            Integer orderNumber,
+                            OrderStatus orderStatus) {
+
+        return repo.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (onlyMine) {
+                predicates.add(cb.equal(
+                        root.get("assignedTo").get("username"),
+                        username
+                ));
+            }
+            if (onlyActive) {
+                predicates.add(cb.equal(root.get("status"), OrderStatus.ACCEPTED));
+            }
+            if (orderNumber != null) {
+                predicates.add(cb.equal(root.get("orderNumber"), orderNumber));
+            }
+            if (orderStatus != null) {
+                predicates.add(cb.equal(root.get("status"), orderStatus));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        }, pageable);
     }
 
     @Transactional(readOnly = true)

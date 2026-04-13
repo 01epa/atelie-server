@@ -8,11 +8,16 @@ import com.atelie.service.security.SecurityService;
 import com.atelie.ui.AbstractView;
 import com.atelie.ui.MainLayout;
 import com.atelie.ui.Notifications;
+import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.checkbox.Checkbox;
+import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.component.orderedlayout.VerticalLayout;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.HasDynamicTitle;
 import com.vaadin.flow.router.Route;
@@ -38,11 +43,18 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
     private final OrderService orderService;
     private final SecurityService securityService;
     private final Grid<Order> grid = new Grid<>(Order.class, false);
+    private final Checkbox showOnlyMine = new Checkbox(t("orders.showOnlyMine"));
+    private final Checkbox showOnlyActive = new Checkbox(t("orders.showOnlyActive"));
+    private ComboBox<OrderStatus> statusFilter;
+    private IntegerField numberFilter;
+    private final boolean isOwner;
+    private Grid.Column<Order> statusColumn;
 
     public OrdersListView(OrderService orderService,
                           SecurityService securityService) {
         this.orderService = orderService;
         this.securityService = securityService;
+        isOwner = securityService.getUserRole() == Role.OWNER;
 
         setSizeFull();
         setPadding(true);
@@ -52,9 +64,40 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 e -> UI.getCurrent().navigate(ORDERS + "/" + NEW_ORDER));
         add.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
-        HorizontalLayout topBar = new HorizontalLayout(add);
+        showOnlyActive.setValue(true);
+
+        showOnlyMine.addValueChangeListener(e -> refresh());
+        showOnlyActive.addValueChangeListener(e -> {
+            updateStatusColumnHeader();
+            refresh();
+        });
+
+        VerticalLayout leftColumn = new VerticalLayout(
+                add
+        );
+        leftColumn.setPadding(false);
+        leftColumn.setSpacing(true);
+        leftColumn.setWidthFull();
+        leftColumn.setAlignItems(Alignment.START);
+        leftColumn.setVisible(isOwner);
+
+        VerticalLayout rightColumn = new VerticalLayout(
+                showOnlyMine,
+                showOnlyActive
+        );
+        rightColumn.setPadding(false);
+        rightColumn.setSpacing(true);
+        rightColumn.setWidthFull();
+        rightColumn.setAlignItems(Alignment.START);
+
+        HorizontalLayout topBar = new HorizontalLayout(
+                leftColumn,
+                rightColumn
+        );
         topBar.setWidthFull();
-        topBar.setPadding(true);
+        topBar.setAlignItems(Alignment.START);
+        topBar.setFlexGrow(1, leftColumn, rightColumn);
+
         add(topBar);
 
         configureGrid();
@@ -67,8 +110,14 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
     private void configureGrid() {
         grid.setSizeFull();
 
+        numberFilter = new IntegerField();
+        numberFilter.setPlaceholder(t("orders.column.number"));
+        numberFilter.setClearButtonVisible(true);
+        numberFilter.setWidthFull();
+        numberFilter.addValueChangeListener(e -> refresh());
+
         grid.addColumn(Order::getOrderNumber)
-                .setHeader(t("orders.column.number"))
+                .setHeader(numberFilter)
                 .setAutoWidth(true)
                 .setSortable(true)
                 .setKey("orderNumber");
@@ -92,10 +141,12 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 .setSortable(true)
                 .setKey("comment");
 
-        grid.addColumn(o -> t(o.getStatus()))
+        statusColumn = grid.addColumn(o -> t(o.getStatus()))
                 .setHeader(t("orders.column.status"))
                 .setSortable(true)
                 .setKey("status");
+
+        updateStatusColumnHeader();
 
         grid.addComponentColumn(order -> {
                     Button doneBtn = new Button(t("orders.button.done"));
@@ -105,7 +156,6 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                     doneBtn.getStyle().set("padding", "0 5px");
                     doneBtn.getStyle().set("background-color", "#a8e6a3");
                     doneBtn.getStyle().set("color", "black");
-                    boolean isOwner = securityService.getUserRole() == Role.OWNER;
                     doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED && isOwner);
 
                     doneBtn.addClickListener(e -> {
@@ -142,14 +192,40 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                             .toList()
             );
 
+            String username = securityService.getAuthenticatedUser().getUsername();
             return orderService.list(
                     PageRequest.of(
                             query.getPage(),
                             query.getPageSize(),
                             sort
-                    )
+                    ),
+                    username,
+                    showOnlyMine.getValue(),
+                    showOnlyActive.getValue(),
+                    numberFilter.getValue(),
+                    statusFilter == null ? OrderStatus.ACCEPTED : statusFilter.getValue()
             ).stream();
         });
+    }
+
+    private void updateStatusColumnHeader() {
+        if (showOnlyActive.getValue()) {
+            statusFilter = null;
+            statusColumn.setHeader(t("orders.column.status"));
+        } else {
+            statusColumn.setHeader(createStatusFilter());
+        }
+    }
+
+    private Component createStatusFilter() {
+        statusFilter = new ComboBox<>();
+        statusFilter.setItems(OrderStatus.values());
+        statusFilter.setItemLabelGenerator(this::t);
+        statusFilter.setPlaceholder(t("orders.column.status"));
+        statusFilter.setClearButtonVisible(true);
+        statusFilter.setWidthFull();
+        statusFilter.addValueChangeListener(e -> refresh());
+        return statusFilter;
     }
 
     @Override
