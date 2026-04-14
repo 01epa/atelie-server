@@ -27,6 +27,7 @@ import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.Binder;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
@@ -71,7 +72,10 @@ public class OrderForm extends AbstractView {
         acceptedBy.setWidthFull();
 
         DateTimePicker dueDate = new DateTimePicker(t("order.dueDate"));
-        dueDate.setMin(LocalDateTime.now());
+        boolean isNew = order.getId() == null;
+        if (isNew) {
+            dueDate.setMin(LocalDateTime.now());
+        }
         dueDate.setStep(Duration.ofHours(1));
         dueDate.setWidthFull();
 
@@ -123,6 +127,13 @@ public class OrderForm extends AbstractView {
                 .withValidator(
                         dt -> dt.getHour() >= 9 && dt.getHour() <= 21,
                         t("validation.timeRange"))
+                .withValidator(dt -> {
+                    Instant instant = dt.atZone(ZoneId.systemDefault()).toInstant();
+                    if (isNew) {
+                        return !instant.isBefore(Instant.now());
+                    }
+                    return true;
+                }, t("validation.pastDate"))
                 .bind(
                         o -> o.getDueDate() != null
                                 ? LocalDateTime.ofInstant(

@@ -10,6 +10,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -79,5 +82,18 @@ public class OrderService {
     @Transactional
     public void delete(Order order) {
         repo.delete(order);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Order> getActiveOrders() {
+        ZoneId zone = ZoneId.of("Europe/Moscow");
+        Instant endOfTomorrow = LocalDate.now(zone)
+                .atTime(23, 59, 59)
+                .atZone(zone)
+                .toInstant();
+        return repo.findAllByStatusAndDueDateLessThanOrderByOrderNumber(
+                OrderStatus.ACCEPTED,
+                endOfTomorrow
+        );
     }
 }

@@ -1,5 +1,6 @@
 server:
-  port: ${PORT:8080}
+  port: ${SERVER_PORT:8080}
+  host: ${SERVER_HOST:http://localhost}
 
 logging:
   level:
@@ -30,3 +31,23 @@ spring:
 vaadin:
   allowed-packages: com.vaadin,org.vaadin,com.flowingcode,com.example
   launch-browser: true
+
+app:
+  scheduler:
+    cron: ${CRON:0 0 9 * * *} #every day at 9:00
+    zone: "Europe/Moscow"
+    max-attempts: ${ATTEMPTS:10}
+    retry-delay-seconds: ${RETRY_TIMEOUT:60}
+
+proxy:
+  host: ${PROXY_HOST}
+  port: ${PROXY_PORT:8080}
+
+telegram:
+  enabled: ${TELEGRAM_ENABLED:false}
+  token: ${TELEGRAM_TOKEN:default-token}
+  chat-id: ${TELEGRAM_CHAT_ID:default-chat}
+
+max:
+  enabled: ${MAX_ENABLED:false}
+  webhook: ${MAX_WEBHOOK_URL:http://localhost}
