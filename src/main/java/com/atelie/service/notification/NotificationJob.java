@@ -22,10 +22,10 @@ import static com.atelie.ui.order.OrdersListView.ORDERS;
 
 @Component
 public class NotificationJob {
-    @Value("${server.host}")
-    private String serverHost;
-    @Value("${server.port}")
-    private int serverPort;
+    @Value("${notification.host}")
+    private String notificationHost;
+    @Value("${notification.port}")
+    private int notificationPort;
 
     private static final Logger log = LoggerFactory.getLogger(NotificationJob.class);
 
@@ -160,9 +160,9 @@ public class NotificationJob {
                 .sorted(Comparator.comparing(Order::getOrderNumber))
                 .forEach(o -> sb.append("🔹 № ")
                         .append("<a href=\"")
-                        .append(serverHost)
+                        .append(notificationHost)
                         .append(":")
-                        .append(serverPort)
+                        .append(notificationPort)
                         .append("/")
                         .append(ORDERS)
                         .append("/")

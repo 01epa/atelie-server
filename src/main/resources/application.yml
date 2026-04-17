@@ -1,6 +1,5 @@
 server:
-  port: ${SERVER_PORT:8080}
-  host: ${SERVER_HOST:http://localhost}
+  port: ${PORT:8080}
 
 logging:
   level:
@@ -8,9 +7,9 @@ logging:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/atelier
-    username: atelier
-    password: atelier
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:atelier}
+    username: ${DB_USER:atelier}
+    password: ${DB_PASSWORD:atelier}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -38,6 +37,10 @@ app:
     zone: "Europe/Moscow"
     max-attempts: ${ATTEMPTS:10}
     retry-delay-seconds: ${RETRY_TIMEOUT:60}
+
+notification:
+  port: ${NOTIFICATION_PORT:8080}
+  host: ${NOTIFICATION_HOST:http://localhost}
 
 proxy:
   host: ${PROXY_HOST}

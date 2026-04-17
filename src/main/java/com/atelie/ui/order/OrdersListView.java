@@ -65,6 +65,7 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         add.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
 
         showOnlyActive.setValue(true);
+        showOnlyMine.setVisible(securityService.getUserRole() != Role.ADMIN);
 
         showOnlyMine.addValueChangeListener(e -> refresh());
         showOnlyActive.addValueChangeListener(e -> {

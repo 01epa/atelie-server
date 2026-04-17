@@ -1,2 +1,8 @@
 @import "theme-editor.css";
 /* Add your styles here */
+
+@media (min-width: 768px) {
+    .mobile-only {
+        display: none;
+    }
+}

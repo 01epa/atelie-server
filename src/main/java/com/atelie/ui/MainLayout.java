@@ -5,7 +5,9 @@ import com.atelie.db.user.User;
 import com.atelie.service.security.SecurityService;
 import com.atelie.service.user.UserService;
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.UI;
 import com.vaadin.flow.component.applayout.AppLayout;
+import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.contextmenu.MenuItem;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -20,6 +22,8 @@ import com.vaadin.flow.dom.Style;
 import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+
+import java.util.Locale;
 
 import static com.atelie.ui.order.OrdersListView.ORDERS;
 import static com.atelie.ui.user.UserForm.changePasswordDialog;
@@ -36,11 +40,16 @@ public final class MainLayout extends AppLayout {
         this.securityService = securityService;
         this.userService = userService;
         setPrimarySection(Section.DRAWER);
+        UI.getCurrent().setLocale(Locale.of("ru"));
 
         addToDrawer(createHeader(), new Scroller(createSideNav()));
+        DrawerToggle toggle = new DrawerToggle();
+        setDrawerOpened(false);
         HorizontalLayout navbar = new HorizontalLayout();
         navbar.setWidthFull();
-        navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.END);
+        navbar.setAlignItems(FlexComponent.Alignment.CENTER);
+        navbar.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
+        navbar.add(toggle);
         navbar.add(createUserMenu());
         addToNavbar(navbar);
     }
