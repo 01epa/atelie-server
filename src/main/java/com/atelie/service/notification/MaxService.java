@@ -6,6 +6,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -23,7 +25,8 @@ public class MaxService implements NotificationService {
     }
 
     @Override
-    public void send(String message) {
+    public List<String> send(String message) {
+        List<String> errors = new ArrayList<>();
         ResponseEntity<String> response = restTemplate.postForEntity(
                 webhook,
                 Map.of("text", message),
@@ -31,7 +34,8 @@ public class MaxService implements NotificationService {
         );
 
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("MAX HTTP error: " + response.getStatusCode());
+            errors.add("MAX HTTP error: " + response.getStatusCode());
         }
+        return errors;
     }
 }

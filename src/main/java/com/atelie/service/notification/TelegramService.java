@@ -7,6 +7,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -19,34 +22,38 @@ public class TelegramService implements NotificationService {
 
     @Value("${telegram.token}")
     private String token;
+    private final List<String> chatIds;
 
-    @Value("${telegram.chat-id}")
-    private String chatId;
-
-    public TelegramService(RestTemplate restTemplate) {
+    public TelegramService(RestTemplate restTemplate,
+                           @Value("${telegram.chat-ids}") String chatIds) {
         this.restTemplate = restTemplate;
+        this.chatIds = Arrays.asList(chatIds.split(","));
     }
 
     @Override
-    public void send(String message) {
+    public List<String> send(String message) {
+        List<String> errors = new ArrayList<>();
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                url,
-                new HttpEntity<>(
-                        Map.of(
-                                "chat_id", chatId,
-                                "text", message,
-                                "parse_mode", "HTML"
-                        )
-                ),
-                Map.class
-        );
-        if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("Telegram HTTP error: " + response.getStatusCode());
-        }
-        Map body = response.getBody();
-        if (body == null || !Boolean.TRUE.equals(body.get("ok"))) {
-            throw new RuntimeException("Telegram API error: " + body);
-        }
+        chatIds.forEach(chatId -> {
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    url,
+                    new HttpEntity<>(
+                            Map.of(
+                                    "chat_id", chatId,
+                                    "text", message,
+                                    "parse_mode", "HTML"
+                            )
+                    ),
+                    Map.class
+            );
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                errors.add("Telegram(chatId=" + chatId + ") HTTP error: " + response.getStatusCode());
+            }
+            Map body = response.getBody();
+            if (body == null || !Boolean.TRUE.equals(body.get("ok"))) {
+                errors.add("Telegram(chatId=" + chatId + ") API error: " + body);
+            }
+        });
+        return errors;
     }
 }

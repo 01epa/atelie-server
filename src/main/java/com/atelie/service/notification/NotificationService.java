@@ -1,5 +1,7 @@
 package com.atelie.service.notification;
 
+import java.util.List;
+
 public interface NotificationService {
-    void send(String message);
+    List<String> send(String message);
 }

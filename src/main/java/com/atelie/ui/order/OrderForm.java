@@ -255,7 +255,7 @@ public class OrderForm extends AbstractView {
                 Dialog dialog = new Dialog();
 
                 H3 label = new H3(t("order.deletion", order.getOrderNumber()));
-                Button save = new Button(t("button.save"), ev -> {
+                Button save = new Button(t("button.delete"), ev -> {
                     orderService.delete(order);
                     Notifications.warning(t("order.deleted", order.getOrderNumber()));
                     UI.getCurrent().navigate(ORDERS);

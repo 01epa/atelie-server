@@ -12,6 +12,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -57,28 +58,39 @@ public class NotificationJob {
             log.info("No notification services enabled");
             return;
         }
+
         List<Order> orders = orderService.getActiveOrders();
         String message = buildMessage(orders);
+
+        List<String> errors = new ArrayList<>();
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 for (NotificationService service : notificationServices) {
-                    service.send(message);
+                    errors.addAll(service.send(message));
                 }
-                log.info("Notification sent");
-                return;
-            } catch (Exception e) {
-                log.error("Attempt {} failed", attempt, e);
-                if (attempt == maxAttempts) {
-                    log.error("All attempts failed. Giving up for today.");
+
+                if (errors.isEmpty()) {
+                    log.info("Notification sent");
                     return;
                 }
+
+                log.warn("Attempt {} failed: {}", attempt, errors);
+
+            } catch (Exception e) {
+                log.error("Attempt {} failed", attempt, e);
+            }
+
+            if (attempt < maxAttempts) {
                 try {
                     Thread.sleep(retryDelayMs * 1000);
                 } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
                 }
             }
         }
+
+        throw new RuntimeException("All attempts failed: " + errors);
     }
 
     public String buildMessage(List<Order> orders) {
@@ -158,21 +170,25 @@ public class NotificationJob {
                                  StringBuilder sb) {
         orders.stream()
                 .sorted(Comparator.comparing(Order::getOrderNumber))
-                .forEach(o -> sb.append("🔹 № ")
-                        .append("<a href=\"")
-                        .append(notificationHost)
-                        .append(":")
-                        .append(notificationPort)
-                        .append("/")
-                        .append(ORDERS)
-                        .append("/")
-                        .append(o.getOrderNumber())
-                        .append("\">")
-                        .append(o.getOrderNumber())
-                        .append("</a>")
-                        .append(" — ")
-                        .append(o.getPrice())
-                        .append(" ₽\n"));
+                .forEach(o -> {
+                    sb.append("🔹 № ")
+                            .append("<a href=\"")
+                            .append(notificationHost);
+                    if (notificationPort != 0) {
+                        sb.append(":")
+                                .append(notificationPort);
+                    }
+                    sb.append("/")
+                            .append(ORDERS)
+                            .append("/")
+                            .append(o.getOrderNumber())
+                            .append("\">")
+                            .append(o.getOrderNumber())
+                            .append("</a>")
+                            .append(" — ")
+                            .append(o.getPrice())
+                            .append(" ₽\n");
+                });
         sb.append("\n");
     }
 }
