@@ -15,11 +15,13 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
 import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.router.HasDynamicTitle;
+import com.vaadin.flow.router.PreserveOnRefresh;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
 import org.springframework.data.domain.PageRequest;
@@ -35,6 +37,7 @@ import static org.springframework.data.domain.Sort.by;
 
 @Route(value = OrdersListView.ORDERS, layout = MainLayout.class)
 @PermitAll
+@PreserveOnRefresh
 public class OrdersListView extends AbstractView implements HasDynamicTitle {
 
     public static final String ORDERS = "orders";
@@ -117,19 +120,54 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         numberFilter.setWidthFull();
         numberFilter.addValueChangeListener(e -> refresh());
 
-        grid.addColumn(Order::getOrderNumber)
+        grid.addComponentColumn(order -> {
+                    HorizontalLayout layout = new HorizontalLayout();
+                    layout.setWidthFull();
+                    layout.setPadding(false);
+                    layout.setSpacing(true);
+                    layout.setAlignItems(Alignment.CENTER);
+                    layout.setJustifyContentMode(JustifyContentMode.BETWEEN);
+
+                    var number = new Span(String.valueOf(order.getOrderNumber()));
+                    Button doneBtn = new Button(t("orders.button.done"));
+                    doneBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
+                    doneBtn.getStyle().set("min-width", "80px");
+                    doneBtn.getStyle().set("width", "80px");
+                    doneBtn.getStyle().set("padding", "0 5px");
+                    doneBtn.getStyle().set("background-color", "#a8e6a3");
+                    doneBtn.getStyle().set("color", "black");
+                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED && isOwner);
+
+                    doneBtn.addClickListener(e -> {
+                        order.setStatus(OrderStatus.DONE);
+                        orderService.save(order);
+                        Notifications.success(t("order.ready", order.getOrderNumber()));
+                        refresh();
+                    });
+
+                    layout.add(number, doneBtn);
+                    layout.expand(number);
+                    return layout;
+                })
                 .setHeader(numberFilter)
                 .setAutoWidth(true)
                 .setSortable(true)
                 .setKey("orderNumber");
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d MMMM yyyy HH:mm")
+                .withLocale(UI.getCurrent().getLocale())
                 .withZone(ZoneId.systemDefault());
 
         grid.addColumn(o -> o.getDueDate() != null ? formatter.format(o.getDueDate()) : "-")
                 .setHeader(t("orders.column.dueDate"))
                 .setSortable(true)
                 .setKey("dueDate");
+
+        grid.addColumn(order -> {
+                    var user = order.getAssignedTo();
+                    return user != null ? user.getFullName() : "";
+                })
+                .setHeader(t("orders.column.assignedTo"));
 
         grid.addColumn(Order::getPrice)
                 .setHeader(t("orders.column.price"))
@@ -148,28 +186,6 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 .setKey("status");
 
         updateStatusColumnHeader();
-
-        grid.addComponentColumn(order -> {
-                    Button doneBtn = new Button(t("orders.button.done"));
-                    doneBtn.addThemeVariants(ButtonVariant.LUMO_SUCCESS);
-                    doneBtn.getStyle().set("min-width", "80px");
-                    doneBtn.getStyle().set("width", "80px");
-                    doneBtn.getStyle().set("padding", "0 5px");
-                    doneBtn.getStyle().set("background-color", "#a8e6a3");
-                    doneBtn.getStyle().set("color", "black");
-                    doneBtn.setVisible(order.getStatus() != OrderStatus.DONE && order.getStatus() != OrderStatus.CANCELLED && isOwner);
-
-                    doneBtn.addClickListener(e -> {
-                        order.setStatus(OrderStatus.DONE);
-                        orderService.save(order);
-                        Notifications.success(t("order.ready", order.getOrderNumber()));
-                        refresh();
-                    });
-
-                    return doneBtn;
-                })
-                .setFlexGrow(0)
-                .setAutoWidth(true);
 
         grid.addItemDoubleClickListener(e ->
                 UI.getCurrent().navigate(ORDERS + "/" + e.getItem().getOrderNumber())
@@ -213,8 +229,10 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         if (showOnlyActive.getValue()) {
             statusFilter = null;
             statusColumn.setHeader(t("orders.column.status"));
+            statusColumn.setVisible(false);
         } else {
             statusColumn.setHeader(createStatusFilter());
+            statusColumn.setVisible(true);
         }
     }
 

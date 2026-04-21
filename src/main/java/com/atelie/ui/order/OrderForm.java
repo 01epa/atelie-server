@@ -35,6 +35,10 @@ import java.util.List;
 import static com.atelie.ui.order.OrdersListView.ORDERS;
 
 public class OrderForm extends AbstractView {
+    private static final String LAST_ASSIGNED_TO = "lastAssignedTo";
+    private static final String LAST_ASSIGNED_TIME = "lastAssignedTime";
+    private static final Duration ASSIGNED_TTL = Duration.ofHours(1);
+
     private final Binder<Order> binder = new Binder<>(Order.class);
 
     public OrderForm(OrderService orderService,
@@ -43,6 +47,7 @@ public class OrderForm extends AbstractView {
                      Order order) {
         Role userRole = securityService.getUserRole();
         boolean editable = userRole == Role.OWNER;
+        boolean isNew = order.getId() == null;
 
         setWidthFull();
         // ---------- поля ----------
@@ -63,16 +68,19 @@ public class OrderForm extends AbstractView {
         assignedTo.setItems(users);
         assignedTo.setWidthFull();
         assignedTo.setItemLabelGenerator(User::getFullName);
-
-        acceptedBy.addValueChangeListener(e -> {
-            if (e.getValue() != null && assignedTo.getValue() == null) {
-                assignedTo.setValue(e.getValue());
+        assignedTo.addValueChangeListener(e -> {
+            if (isNew && e.getValue() != null) {
+                UI.getCurrent().getSession().setAttribute(LAST_ASSIGNED_TO, e.getValue());
+                UI.getCurrent().getSession().setAttribute(LAST_ASSIGNED_TIME, Instant.now());
+                if (acceptedBy.getValue() == null) {
+                    acceptedBy.setValue(e.getValue());
+                }
             }
         });
+
         acceptedBy.setWidthFull();
 
         DateTimePicker dueDate = new DateTimePicker(t("order.dueDate"));
-        boolean isNew = order.getId() == null;
         if (isNew) {
             dueDate.setMin(LocalDateTime.now());
         }
@@ -173,16 +181,26 @@ public class OrderForm extends AbstractView {
                 .bind(Order::getAssignedTo, editable ? Order::setAssignedTo : null);
         binder.readBean(order);
 
+        if (isNew) {
+            User lastUser = (User) UI.getCurrent().getSession().getAttribute(LAST_ASSIGNED_TO);
+            Instant lastTime = (Instant) UI.getCurrent().getSession().getAttribute(LAST_ASSIGNED_TIME);
+            if (lastUser != null && lastTime != null) {
+                boolean notExpired = lastTime.plus(ASSIGNED_TTL).isAfter(Instant.now());
+                if (notExpired) {
+                    assignedTo.setValue(lastUser);
+                }
+            }
+        }
+
         // ---------- layout ----------
         VerticalLayout orderLeft = new VerticalLayout(orderNumber, price);
         VerticalLayout orderRight = new VerticalLayout(dueDate, comment);
-
         HorizontalLayout orderBlock = new HorizontalLayout(orderLeft, orderRight);
         orderBlock.setWidthFull();
         orderBlock.setFlexGrow(1, orderLeft, orderRight);
 
-        VerticalLayout execLeft = new VerticalLayout(acceptedBy, status);
-        VerticalLayout execRight = new VerticalLayout(assignedTo);
+        VerticalLayout execLeft = new VerticalLayout(assignedTo, status);
+        VerticalLayout execRight = new VerticalLayout(acceptedBy);
 
         HorizontalLayout executionBlock = new HorizontalLayout(execLeft, execRight);
         executionBlock.setWidthFull();
