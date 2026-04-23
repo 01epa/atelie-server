@@ -3,8 +3,10 @@ package com.atelie.ui.order;
 import com.atelie.db.order.Order;
 import com.atelie.db.order.OrderStatus;
 import com.atelie.db.user.Role;
+import com.atelie.db.user.User;
 import com.atelie.service.order.OrderService;
 import com.atelie.service.security.SecurityService;
+import com.atelie.service.user.UserService;
 import com.atelie.ui.AbstractView;
 import com.atelie.ui.MainLayout;
 import com.atelie.ui.Notifications;
@@ -29,6 +31,7 @@ import org.springframework.data.domain.Sort;
 
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import static com.atelie.service.order.OrderService.DEFAULT_SORTING;
 import static org.springframework.data.domain.Sort.Direction.ASC;
@@ -44,18 +47,23 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
     public static final String NEW_ORDER = "new";
 
     private final OrderService orderService;
+    private final UserService userService;
     private final SecurityService securityService;
     private final Grid<Order> grid = new Grid<>(Order.class, false);
     private final Checkbox showOnlyMine = new Checkbox(t("orders.showOnlyMine"));
     private final Checkbox showOnlyActive = new Checkbox(t("orders.showOnlyActive"));
     private ComboBox<OrderStatus> statusFilter;
+    private ComboBox<User> assignedToFilter;
     private IntegerField numberFilter;
     private final boolean isOwner;
     private Grid.Column<Order> statusColumn;
+    private Grid.Column<Order> assignedToColumn;
 
     public OrdersListView(OrderService orderService,
+                          UserService userService,
                           SecurityService securityService) {
         this.orderService = orderService;
+        this.userService = userService;
         this.securityService = securityService;
         isOwner = securityService.getUserRole() == Role.OWNER;
 
@@ -70,7 +78,10 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         showOnlyActive.setValue(true);
         showOnlyMine.setVisible(securityService.getUserRole() != Role.ADMIN);
 
-        showOnlyMine.addValueChangeListener(e -> refresh());
+        showOnlyMine.addValueChangeListener(e -> {
+            updateAssignedToColumnHeader();
+            refresh();
+        });
         showOnlyActive.addValueChangeListener(e -> {
             updateStatusColumnHeader();
             refresh();
@@ -163,11 +174,13 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 .setSortable(true)
                 .setKey("dueDate");
 
-        grid.addColumn(order -> {
+        assignedToColumn = grid.addColumn(order -> {
                     var user = order.getAssignedTo();
                     return user != null ? user.getFullName() : "";
                 })
-                .setHeader(t("orders.column.assignedTo"));
+                .setHeader(t("orders.column.assignedTo"))
+                .setSortable(true)
+                .setKey("assignedTo");
 
         grid.addColumn(Order::getPrice)
                 .setHeader(t("orders.column.price"))
@@ -186,6 +199,7 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                 .setKey("status");
 
         updateStatusColumnHeader();
+        updateAssignedToColumnHeader();
 
         grid.addItemDoubleClickListener(e ->
                 UI.getCurrent().navigate(ORDERS + "/" + e.getItem().getOrderNumber())
@@ -220,7 +234,8 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
                     showOnlyMine.getValue(),
                     showOnlyActive.getValue(),
                     numberFilter.getValue(),
-                    statusFilter == null ? OrderStatus.ACCEPTED : statusFilter.getValue()
+                    statusFilter == null ? OrderStatus.ACCEPTED : statusFilter.getValue(),
+                    assignedToFilter == null ? null : assignedToFilter.getValue()
             ).stream();
         });
     }
@@ -236,6 +251,17 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         }
     }
 
+    private void updateAssignedToColumnHeader() {
+        if (showOnlyMine.getValue()) {
+            assignedToFilter = null;
+            assignedToColumn.setHeader(t("orders.column.assignedTo"));
+            assignedToColumn.setVisible(false);
+        } else {
+            assignedToColumn.setHeader(createAssignedToFilter());
+            assignedToColumn.setVisible(true);
+        }
+    }
+
     private Component createStatusFilter() {
         statusFilter = new ComboBox<>();
         statusFilter.setItems(OrderStatus.values());
@@ -245,6 +271,18 @@ public class OrdersListView extends AbstractView implements HasDynamicTitle {
         statusFilter.setWidthFull();
         statusFilter.addValueChangeListener(e -> refresh());
         return statusFilter;
+    }
+
+    private Component createAssignedToFilter() {
+        List<User> users = userService.findAllUsers();
+        assignedToFilter = new ComboBox<>();
+        assignedToFilter.setItems(users);
+        assignedToFilter.setItemLabelGenerator(User::getFullName);
+        assignedToFilter.setPlaceholder(t("orders.column.assignedTo"));
+        assignedToFilter.setClearButtonVisible(true);
+        assignedToFilter.setWidthFull();
+        assignedToFilter.addValueChangeListener(e -> refresh());
+        return assignedToFilter;
     }
 
     @Override

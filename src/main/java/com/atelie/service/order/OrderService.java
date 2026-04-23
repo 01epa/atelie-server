@@ -3,6 +3,7 @@ package com.atelie.service.order;
 import com.atelie.db.order.Order;
 import com.atelie.db.order.OrderRepository;
 import com.atelie.db.order.OrderStatus;
+import com.atelie.db.user.User;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -37,8 +38,8 @@ public class OrderService {
                             boolean onlyMine,
                             boolean onlyActive,
                             Integer orderNumber,
-                            OrderStatus orderStatus) {
-
+                            OrderStatus orderStatus,
+                            User user) {
         return repo.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             if (onlyMine) {
@@ -55,6 +56,9 @@ public class OrderService {
             }
             if (orderStatus != null) {
                 predicates.add(cb.equal(root.get("status"), orderStatus));
+            }
+            if (user != null) {
+                predicates.add(cb.equal(root.get("assignedTo"), user));
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         }, pageable);
