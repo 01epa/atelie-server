@@ -2,6 +2,15 @@ server:
   port: ${PORT:8080}
 
 logging:
+  file:
+    name: tmp/application.log
+
+  logback:
+    rollingpolicy:
+      max-file-size: 1MB
+      max-history: 5
+      total-size-cap: 5MB
+
   level:
     org.atmosphere: warn
 
